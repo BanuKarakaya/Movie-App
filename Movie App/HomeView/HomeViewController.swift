@@ -10,12 +10,28 @@ import UIKit
 final class HomeViewController: UIViewController {
     
     @IBOutlet weak var homeCollectionView: UICollectionView!
+    @IBOutlet weak var emptyView: UIView!
     
     private lazy var viewModel: HomeViewModelProtocol = HomeViewModel(delegate: self)
     
     override func viewDidLoad() {
         super.viewDidLoad()
         viewModel.viewDidLoad()
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(populerCellToDetail(_:)), name: .populerCellTapped, object: nil)
+
+    }
+    
+    @objc func populerCellToDetail(_ notification: NSNotification) {
+        if let dict = notification.userInfo as NSDictionary? {
+            if let selectedCell = dict["selectedCell"] as? Search {
+                let detailVC = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "DetailViewController") as! DetailViewController
+                let detailVM = DetailViewModel(delegate: detailVC)
+                detailVM.selectedMovie = selectedCell
+                detailVC.viewModel = detailVM
+                navigationController?.pushViewController(detailVC, animated: true)
+            }
+        }
     }
 }
 
@@ -30,7 +46,7 @@ extension HomeViewController: UICollectionViewDataSource {
               case 0:
                   return 1
               case 1:
-                  return 8
+            return viewModel.numberOfItems()
               default:
                   return 8
               }
@@ -42,7 +58,8 @@ extension HomeViewController: UICollectionViewDataSource {
             return cell
         } else  {
             let cell = collectionView.dequeCell(cellType: MovieCell.self, indexPath: indexPath)
-            let cellViewModel = MovieCellViewModel(delegate: cell)
+            let movie = viewModel.movieAtIndex(index: indexPath.item)
+            let cellViewModel = MovieCellViewModel(delegate: cell, movie: movie)
             cell.viewModel = cellViewModel
             return cell
         }
@@ -62,20 +79,74 @@ extension HomeViewController: UICollectionViewDelegateFlowLayout {
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
-        .init(top: 10, left: 25, bottom: 10, right: 25)
+        switch section {
+        case 0:
+            return .init(top: 10, left: 10, bottom: 10, right: 10)
+        case 1:
+            return .init(top: 10, left: 25, bottom: 10, right: 25)
+        default:
+            return .init(top: 10, left: 25, bottom: 10, right: 25)
+        }
     }
 }
 
 extension HomeViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-       let detailVC = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "DetailViewController") as! DetailViewController
-        navigationController?.pushViewController(detailVC, animated: true)
+        switch indexPath.section {
+        case 0:
+            print("banu")
+        case 1:
+            viewModel.didSelectItemAt(index: indexPath.item)
+        default:
+            viewModel.didSelectItemAt(index: indexPath.item)
+        }
+        
+    }
+}
+
+extension HomeViewController: UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        print("banu")
+        viewModel.searchBarSearchButtonClicked(searchText: searchBar.text ?? "")
+    }
+    
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        viewModel.searchBarCancelButtonClicked()
     }
 }
 
 extension HomeViewController: HomeViewModelDelegate {
+    func emptyViewHidden(hidden: Bool) {
+        emptyView.isHidden = hidden
+    }
+    
+    func prepareSearchBar() {
+        let searchController = UISearchController(searchResultsController: nil)
+        searchController.hidesNavigationBarDuringPresentation = true
+        searchController.obscuresBackgroundDuringPresentation = false
+        navigationItem.searchController = searchController
+        
+        UIBarButtonItem.appearance(whenContainedInInstancesOf: [UISearchBar.self]).tintColor = .tintColor
+        
+        searchController.searchBar.delegate = self
+    }
+    
+    func navigateToDetailVC(selectedCell: Search?) {
+        let detailVC = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "DetailViewController") as! DetailViewController
+        
+        let detailViewModel = DetailViewModel(delegate: detailVC)
+        detailVC.viewModel = detailViewModel
+        detailViewModel.selectedMovie = selectedCell
+        navigationController?.pushViewController(detailVC, animated: true)
+    }
+    
+    func reloadData() {
+        homeCollectionView.reloadData()
+    }
+    
     func setUI() {
         self.title = "Movies"
+        emptyView.isHidden = true
     }
     
     func prepareCollectionView() {

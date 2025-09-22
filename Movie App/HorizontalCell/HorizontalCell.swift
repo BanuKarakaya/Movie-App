@@ -23,17 +23,23 @@ class HorizontalCell: UICollectionViewCell {
  
 extension HorizontalCell: UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        8
+        return viewModel.numberOfItems() ?? 0
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeCell(cellType: MovieCell.self, indexPath: indexPath)
+        let movie = viewModel.movieAtIndex(index: indexPath.item)
+        let cellViewModel = MovieCellViewModel(delegate: cell, movie: movie)
+        cell.viewModel = cellViewModel
         return cell
     }
 }
 
 extension HorizontalCell: UICollectionViewDelegate {
-    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        viewModel.didSelectItemAt(index: indexPath.item)
+        viewModel.sendSelectedCell()
+    }
 }
 
 extension HorizontalCell: UICollectionViewDelegateFlowLayout {
@@ -43,6 +49,11 @@ extension HorizontalCell: UICollectionViewDelegateFlowLayout {
 }
                                 
 extension HorizontalCell: HorizontalCellViewModelDelegate {
+
+    func reloadData() {
+        horizontalCollectionView.reloadData()
+    }
+    
     func prepareCollectionView() {
         horizontalCollectionView.delegate = self
         horizontalCollectionView.dataSource = self
